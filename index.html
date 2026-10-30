@@ -1,0 +1,369 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>نظام الحضور والطلبات</title>
+    <style>
+        :root {
+            --bg: #f4f6f8;
+            --card: #fff;
+            --tx: #1b2430;
+            --mut: #6b7686;
+            --pri: #0f6e56;
+            --pri2: #e1f5ee;
+            --bd: #e3e7ec;
+            --ok: #1a7f4b;
+            --no: #c0392b;
+            --wa: #b7791f;
+            color-scheme: light
+        }
+
+        @media (prefers-color-scheme:dark) {
+            :root {
+                --bg: #12171d;
+                --card: #1b222b;
+                --tx: #e8edf2;
+                --mut: #93a0b0;
+                --pri: #3ccf9e;
+                --pri2: #16352b;
+                --bd: #2b3541;
+                --ok: #4cc38a;
+                --no: #ef6f61;
+                --wa: #e0a84a;
+                color-scheme: dark
+            }
+        }
+
+        * {
+            box-sizing: border-box
+        }
+
+        html,
+        body {
+            margin: 0
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--tx);
+            font: 15px/1.6 Tahoma, "Segoe UI", Arial, sans-serif;
+            max-width: 720px;
+            margin: 0 auto;
+            padding: 14px 14px 40px
+        }
+
+        h1 {
+            font-size: 19px;
+            margin: 6px 0 2px
+        }
+
+        .mut {
+            color: var(--mut);
+            font-size: 13px
+        }
+
+        .tabs {
+            display: flex;
+            gap: 6px;
+            margin: 14px 0;
+            overflow-x: auto
+        }
+
+        .tabs button {
+            flex: 1;
+            white-space: nowrap
+        }
+
+        button {
+            font: inherit;
+            border: 1px solid var(--bd);
+            background: var(--card);
+            color: var(--tx);
+            padding: 9px 14px;
+            border-radius: 10px;
+            cursor: pointer
+        }
+
+        button.on,
+        button.pri {
+            background: var(--pri);
+            color: #fff;
+            border-color: var(--pri)
+        }
+
+        button.sm {
+            padding: 5px 10px;
+            font-size: 13px
+        }
+
+        button:disabled {
+            opacity: .5
+        }
+
+        .card {
+            background: var(--card);
+            border: 1px solid var(--bd);
+            border-radius: 14px;
+            padding: 16px;
+            margin-bottom: 12px
+        }
+
+        .big {
+            width: 100%;
+            padding: 18px;
+            font-size: 18px;
+            border-radius: 14px
+        }
+
+        input,
+        select,
+        textarea {
+            font: inherit;
+            width: 100%;
+            padding: 9px;
+            border: 1px solid var(--bd);
+            border-radius: 10px;
+            background: var(--bg);
+            color: var(--tx)
+        }
+
+        label {
+            display: block;
+            font-size: 13px;
+            color: var(--mut);
+            margin: 10px 0 4px
+        }
+
+        .row {
+            display: flex;
+            gap: 8px
+        }
+
+        .row>* {
+            flex: 1
+        }
+
+        .item {
+            border-top: 1px solid var(--bd);
+            padding: 10px 0;
+            display: flex;
+            justify-content: space-between;
+            gap: 8px;
+            align-items: center
+        }
+
+        .item:first-child {
+            border-top: 0
+        }
+
+        .tag {
+            font-size: 12px;
+            padding: 2px 9px;
+            border-radius: 99px;
+            background: var(--pri2);
+            color: var(--pri);
+            white-space: nowrap
+        }
+
+        .tag.pending {
+            color: var(--wa)
+        }
+
+        .tag.approved {
+            color: var(--ok)
+        }
+
+        .tag.rejected {
+            color: var(--no)
+        }
+
+        #toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--tx);
+            color: var(--bg);
+            padding: 10px 16px;
+            border-radius: 10px;
+            display: none;
+            max-width: 90%;
+            z-index: 9
+        }
+
+        .stat {
+            margin: 10px 0;
+            text-align: center
+        }
+
+        .hide {
+            display: none
+        }
+
+        .top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center
+        }
+    </style>
+</head>
+
+<body>
+    <div class="top">
+        <div>
+            <h1>نظام الحضور والطلبات</h1>
+            <div class="mut" id="who"></div>
+        </div><button class="sm hide" id="out">خروج</button>
+    </div>
+    <div id="login" class="card hide">
+        <b id="lt">تسجيل الدخول</b>
+        <div id="nmw" class="hide"><label>الاسم</label><input id="ln"></div>
+        <label>البريد الإلكتروني</label><input id="le" type="email" dir="ltr">
+        <label>كلمة المرور</label><input id="lp" type="password" dir="ltr">
+        <div class="row" style="margin-top:12px"><button class="pri" id="lg">دخول</button><button id="ls">حساب
+                جديد</button></div>
+    </div>
+    <div id="app" class="hide">
+        <div class="tabs" id="tabs"></div>
+        <div id="v-att"></div>
+        <div id="v-req" class="hide"></div>
+        <div id="v-adm" class="hide"></div>
+    </div>
+    <div id="toast"></div>
+    <script type="module">
+        // ====== ضع إعدادات Firebase بتاعتك هنا ======
+        const firebaseConfig = { apiKey: "AIzaSyDBCU6MszbvG2peDdkJZfFlaTO3DpPMFdo", authDomain: "erphr-d3863.firebaseapp.com", projectId: "erphr-d3863", storageBucket: "erphr-d3863.firebasestorage.app", messagingSenderId: "452153420148", appId: "1:452153420148:web:e1b6e58259ae9446dae421" };
+        // ============================================
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, addDoc, updateDoc, collection, query, where, orderBy, limit, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+        const app = initializeApp(firebaseConfig), auth = getAuth(app), db = getFirestore(app);
+        const $ = s => document.querySelector(s);
+        const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        const TL = { leave: 'اجازة', casual: 'عارضة', permission: 'اذن' }, SL = { pending: 'قيد المراجعة', approved: 'تمت الموافقة', rejected: 'مرفوض' };
+        const toast = m => { const t = $('#toast'); t.textContent = m; t.style.display = 'block'; clearTimeout(toast.t); toast.t = setTimeout(() => t.style.display = 'none', 3500) };
+        let uid = null, admin = false, zone = null, att = [], reqs = [], names = {}, tab = 'att', unsubs = [], reg = false;
+
+        // ---------- auth ----------
+        const errMsg = e => ({ 'auth/invalid-credential': 'بيانات الدخول غلط', 'auth/email-already-in-use': 'البريد مستخدم قبل كده', 'auth/weak-password': 'كلمة المرور ضعيفة (6 حروف على الأقل)', 'auth/invalid-email': 'البريد غير صحيح' }[e.code] || 'حصل خطأ، جرب تاني');
+        $('#ls').onclick = () => { reg = !reg; $('#nmw').classList.toggle('hide', !reg); $('#lt').textContent = reg ? 'حساب جديد' : 'تسجيل الدخول'; $('#ls').textContent = reg ? 'عندي حساب' : 'حساب جديد' };
+        $('#lg').onclick = async () => {
+            const e = $('#le').value.trim(), p = $('#lp').value;
+            try {
+                if (reg) {
+                    const n = $('#ln').value.trim(); if (!n) return toast('اكتب اسمك');
+                    const c = await createUserWithEmailAndPassword(auth, e, p);
+                    await setDoc(doc(db, 'users', c.user.uid), { name: n, email: e, role: 'employee' });
+                }
+                else await signInWithEmailAndPassword(auth, e, p);
+            } catch (x) { toast(errMsg(x)) }
+        };
+        $('#out').onclick = () => signOut(auth);
+        onAuthStateChanged(auth, async u => {
+            unsubs.forEach(f => f()); unsubs = []; att = []; reqs = []; names = {}; zone = null;
+            if (!u) { uid = null; $('#login').classList.remove('hide'); $('#app').classList.add('hide'); $('#out').classList.add('hide'); $('#who').textContent = ''; return }
+            uid = u.uid; let me = await getDoc(doc(db, 'users', uid));
+            for (let i = 0; i < 5 && !me.exists(); i++) { await new Promise(r => setTimeout(r, 500)); me = await getDoc(doc(db, 'users', uid)) }
+            const d = me.exists() ? me.data() : {}; admin = d.role === 'admin'; names[uid] = d.name || '';
+            $('#who').textContent = (d.name || '') + ' — ' + (admin ? 'مدير النظام' : 'موظف');
+            $('#login').classList.add('hide'); $('#app').classList.remove('hide'); $('#out').classList.remove('hide');
+            const tk = s => s.docs.map(x => ({ id: x.id, ...x.data() }));
+            const er = e => toast('تعذر تحميل البيانات: ' + e.code);
+            unsubs.push(onSnapshot(doc(db, 'settings', 'zone'), s => { zone = s.exists() ? s.data() : null; render() }, er));
+            const A = collection(db, 'attendance'), R = collection(db, 'requests');
+            unsubs.push(onSnapshot(admin ? query(A, orderBy('ts', 'desc'), limit(300)) : query(A, where('uid', '==', uid)), s => { att = tk(s); render() }, er));
+            unsubs.push(onSnapshot(admin ? query(R, orderBy('ts', 'desc'), limit(300)) : query(R, where('uid', '==', uid)), s => { reqs = tk(s); render() }, er));
+            if (admin) unsubs.push(onSnapshot(collection(db, 'users'), s => { s.docs.forEach(x => names[x.id] = x.data().name || ''); render() }, er));
+            render();
+        });
+
+        // ---------- helpers ----------
+        const tabsDef = () => [['att', 'البصمة'], ['req', 'الطلبات']].concat(admin ? [['adm', 'الإدارة']] : []);
+        function drawTabs() {
+            $('#tabs').innerHTML = tabsDef().map(t => `<button data-t="${t[0]}" class="${tab === t[0] ? 'on' : ''}">${t[1]}</button>`).join('');
+            $('#tabs').querySelectorAll('button').forEach(b => b.onclick = () => { tab = b.dataset.t; render() });
+            ['att', 'req', 'adm'].forEach(k => $('#v-' + k).classList.toggle('hide', k !== tab))
+        }
+        const dist = (a, b, c, d) => { const R = 6371000, r = x => x * Math.PI / 180, dl = r(c - a), dn = r(d - b), h = Math.sin(dl / 2) ** 2 + Math.cos(r(a)) * Math.cos(r(c)) * Math.sin(dn / 2) ** 2; return 2 * R * Math.asin(Math.sqrt(h)) };
+        const getPos = () => new Promise((ok, no) => navigator.geolocation ? navigator.geolocation.getCurrentPosition(ok, no, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }) : no(new Error('no geo')));
+        const fmt = t => new Date(t).toLocaleString('ar-EG', { dateStyle: 'medium', timeStyle: 'short' });
+        const nm = id => esc(names[id] || 'موظف');
+        const todayStart = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d.getTime() };
+        const lastToday = () => att.filter(a => a.uid === uid && a.ts >= todayStart()).sort((a, b) => b.ts - a.ts)[0];
+
+        async function punch(btn) {
+            if (!zone) return toast('الإدارة لسه ما حددتش زون البصمة');
+            btn.disabled = true;
+            try {
+                const c = (await getPos()).coords, d = dist(c.latitude, c.longitude, zone.lat, zone.lng);
+                if (d > zone.radius) return toast('انت برة النطاق — بعيد ' + Math.round(d) + ' متر');
+                const l = lastToday(), type = l && l.type === 'in' ? 'out' : 'in';
+                await addDoc(collection(db, 'attendance'), { uid, type, ts: Date.now(), lat: c.latitude, lng: c.longitude, dist: Math.round(d), acc: Math.round(c.accuracy) });
+                toast(type === 'in' ? 'تم تسجيل الحضور ✓' : 'تم تسجيل الانصراف ✓');
+            } catch (e) { toast(e && e.code === 1 ? 'لازم تسمح للمتصفح بالوصول للموقع' : 'تعذر تحديد الموقع، جرب تاني') }
+            finally { btn.disabled = false }
+        }
+
+        // ---------- views ----------
+        function viewAtt() {
+            const l = lastToday(), mine = att.filter(a => a.uid === uid).sort((a, b) => b.ts - a.ts).slice(0, 15);
+            $('#v-att').innerHTML = `<div class="card"><div class="stat">${zone ? 'الزون: <b>' + esc(zone.name || 'موقع العمل') + '</b> — النطاق ' + zone.radius + ' متر' : 'لم يتم تحديد زون البصمة بعد'}</div>
+ <div class="stat mut">${l ? (l.type === 'in' ? 'آخر تسجيل: حضور ' : 'آخر تسجيل: انصراف ') + fmt(l.ts) : 'لا يوجد تسجيل اليوم'}</div>
+ <button class="pri big" id="pb">${l && l.type === 'in' ? 'تسجيل انصراف' : 'تسجيل حضور'}</button></div>
+ <div class="card"><b>سجلي الأخير</b>${mine.map(a => `<div class="item"><span>${a.type === 'in' ? 'حضور' : 'انصراف'}</span><span class="mut">${fmt(a.ts)}</span></div>`).join('') || '<div class="mut">لا توجد سجلات</div>'}</div>`;
+            $('#pb').onclick = e => punch(e.target);
+        }
+        function reqLine(r, adm) {
+            const when = r.type === 'permission' ? `${esc(r.d1)} من ${esc(r.t1)} إلى ${esc(r.t2)}` : `${esc(r.d1)} → ${esc(r.d2)}`;
+            return `<div class="item"><div><b>${TL[r.type] || ''}</b>${adm ? ' — ' + nm(r.uid) : ''}<div class="mut">${when}${r.reason ? ' • ' + esc(r.reason) : ''}</div></div>
+ <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><span class="tag ${esc(r.status)}">${SL[r.status] || ''}</span>
+ ${adm && r.status === 'pending' ? `<button class="sm pri" data-a="approved" data-id="${esc(r.id)}">موافقة</button><button class="sm" data-a="rejected" data-id="${esc(r.id)}">رفض</button>` : ''}</div></div>`;
+        }
+        function viewReq() {
+            if ($('#rt') && tab === 'req') return; // don't wipe the form while typing
+            const mine = reqs.filter(r => r.uid === uid).sort((a, b) => b.ts - a.ts);
+            $('#v-req').innerHTML = `<div class="card"><b>طلب جديد</b>
+ <label>نوع الطلب</label><select id="rt"><option value="leave">اجازة</option><option value="casual">عارضة</option><option value="permission">اذن</option></select>
+ <div id="dr" class="row"><div><label>من تاريخ</label><input type="date" id="d1"></div><div><label>إلى تاريخ</label><input type="date" id="d2"></div></div>
+ <div id="pr" class="hide"><label>تاريخ الاذن</label><input type="date" id="pd"><div class="row"><div><label>من الساعة</label><input type="time" id="t1"></div><div><label>إلى الساعة</label><input type="time" id="t2"></div></div></div>
+ <label>السبب</label><textarea id="rs" rows="2"></textarea>
+ <button class="pri" style="margin-top:12px;width:100%" id="rsend">إرسال الطلب</button></div>
+ <div class="card" id="mine"><b>طلباتي</b></div>`;
+            $('#rt').onchange = () => { const p = $('#rt').value === 'permission'; $('#dr').classList.toggle('hide', p); $('#pr').classList.toggle('hide', !p) };
+            $('#rsend').onclick = async () => {
+                const type = $('#rt').value, o = { uid, type, reason: $('#rs').value.trim(), status: 'pending', ts: Date.now() };
+                if (type === 'permission') { o.d1 = $('#pd').value; o.t1 = $('#t1').value; o.t2 = $('#t2').value; if (!o.d1 || !o.t1 || !o.t2) return toast('كمّل التاريخ والوقت') }
+                else { o.d1 = $('#d1').value; o.d2 = $('#d2').value || o.d1; if (!o.d1) return toast('اختار التاريخ'); if (o.d2 < o.d1) return toast('تاريخ النهاية قبل البداية') }
+                try { await addDoc(collection(db, 'requests'), o); toast('تم إرسال الطلب ✓'); $('#rs').value = '' } catch (e) { toast('تعذر الإرسال') }
+            };
+        }
+        function viewMine() {
+            const m = $('#mine'); if (!m) return; const mine = reqs.filter(r => r.uid === uid).sort((a, b) => b.ts - a.ts);
+            m.innerHTML = '<b>طلباتي</b>' + (mine.map(r => reqLine(r, false)).join('') || '<div class="mut">لا توجد طلبات</div>')
+        }
+        function viewAdm() {
+            if (!admin || (tab === 'adm' && $('#zn') && document.activeElement && document.activeElement.closest('#v-adm .card:first-child'))) return;
+            const z = zone || {}, pend = reqs.filter(r => r.status === 'pending').sort((a, b) => a.ts - b.ts), rest = reqs.filter(r => r.status !== 'pending').slice(0, 10), log = att.slice(0, 30);
+            $('#v-adm').innerHTML = `<div class="card"><b>زون البصمة</b>
+ <label>اسم الموقع</label><input id="zn" value="${esc(z.name || '')}">
+ <div class="row"><div><label>خط العرض</label><input id="zla" inputmode="decimal" value="${esc(z.lat ?? '')}"></div><div><label>خط الطول</label><input id="zlo" inputmode="decimal" value="${esc(z.lng ?? '')}"></div></div>
+ <label>نصف القطر (متر)</label><input id="zr" inputmode="numeric" value="${esc(z.radius ?? 100)}">
+ <div class="row" style="margin-top:12px"><button id="zme">استخدم موقعي الحالي</button><button class="pri" id="zs">حفظ الزون</button></div></div>
+ <div class="card"><b>طلبات قيد المراجعة (${pend.length})</b>${pend.map(r => reqLine(r, true)).join('') || '<div class="mut">لا توجد طلبات</div>'}</div>
+ <div class="card"><b>آخر القرارات</b>${rest.map(r => reqLine(r, true)).join('') || '<div class="mut">—</div>'}</div>
+ <div class="card"><b>سجل الحضور</b>${log.map(a => `<div class="item"><span>${nm(a.uid)} — ${a.type === 'in' ? 'حضور' : 'انصراف'}</span><span class="mut">${fmt(a.ts)}</span></div>`).join('') || '<div class="mut">—</div>'}</div>`;
+            $('#zme').onclick = async () => { try { const c = (await getPos()).coords; $('#zla').value = c.latitude.toFixed(6); $('#zlo').value = c.longitude.toFixed(6); toast('تم التقاط موقعك') } catch (e) { toast('تعذر تحديد الموقع') } };
+            $('#zs').onclick = async () => {
+                const lat = parseFloat($('#zla').value), lng = parseFloat($('#zlo').value), radius = parseInt($('#zr').value, 10);
+                if (!isFinite(lat) || !isFinite(lng) || !(radius > 0)) return toast('راجع الإحداثيات ونصف القطر');
+                try { await setDoc(doc(db, 'settings', 'zone'), { name: $('#zn').value.trim(), lat, lng, radius }); toast('تم حفظ الزون ✓') } catch (e) { toast('تعذر الحفظ') }
+            };
+            $('#v-adm').querySelectorAll('[data-a]').forEach(b => b.onclick = async () => { try { await updateDoc(doc(db, 'requests', b.dataset.id), { status: b.dataset.a, by: uid }) } catch (e) { toast('تعذر التحديث') } });
+        }
+        function render() { if (!uid) return; drawTabs(); viewAtt(); viewReq(); viewMine(); viewAdm() }
+    </script>
+</body>
+
+</html>
